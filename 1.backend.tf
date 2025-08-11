@@ -1,4 +1,5 @@
 # https://www.terraform.io/language/settings/backends/gcs
+# Terraform Settings
 terraform {
   backend "gcs" {
     bucket = "test-account-bucket-1"

@@ -1,0 +1,84 @@
+resource "google_compute_global_forwarding_rule" "test-forward" {
+    name = "test-gateway"
+    ip_protocol = "TCP"
+    load_balancing_scheme = "EXTERNAL_MANAGED"
+    port_range = "80"
+    target = google_compute_target_http_proxy.test-proxy.id
+    depends_on = [ google_compute_subnetwork.useastlizzo ]
+}
+
+resource "google_compute_target_http_proxy" "test-proxy" {
+    name    = "test-proxy"
+    url_map = google_compute_url_map.test-url.id
+  
+}
+
+resource "google_compute_url_map" "test-url" {
+    name = "test-url"
+    default_service = google_compute_backend_service.test-backend.id
+  
+}
+
+resource "google_compute_backend_service" "test-backend" {
+    name = "test-backend"
+    protocol = "HTTP"
+    load_balancing_scheme = "EXTERNAL_MANAGED"
+    timeout_sec = 10
+    health_checks = [google_compute_health_check.test-healthcheck.id]
+    enable_cdn = true
+
+    backend {
+      group = google_compute_region_instance_group_manager.app.instance_group
+      balancing_mode = "UTILIZATION"
+      capacity_scaler = 1.0
+    }
+  
+}
+
+resource "google_compute_health_check" "test-healthcheck" {
+    name = "test-healthcheck"
+    http_health_check {
+      port_specification = "USE_SERVING_PORT"
+      request_path = "/"
+    }
+  
+}
+
+resource "google_compute_region_instance_group_manager" "app" {
+  name               = "app-mig"
+  region             = "us-east1"
+  
+version {
+    instance_template = google_compute_region_instance_template.uscentraltemplate.id
+  }
+ 
+ base_instance_name = "app"
+  target_size        = 2
+    named_port {
+    name = "http"
+    port = 80
+}
+}
+resource "google_compute_region_instance_template" "uscentraltemplate" {
+  name         = "uscentraltemplate"
+  description  = "This template is used to clone useastvm"
+  machine_type = "e2-medium"
+  region       = "us-east1"
+
+  # Create a new boot disk from an image
+  disk {
+    source_image = "debian-cloud/debian-12"
+    boot         = true
+  }
+
+  # Network Config
+  network_interface {
+    subnetwork = google_compute_subnetwork.useastlizzo.id
+    access_config {
+      # Include this section to give the VM an external IP address
+    } 
+  }
+
+  # Install Webserver
+  metadata_startup_script = file("./startup.sh")
+}

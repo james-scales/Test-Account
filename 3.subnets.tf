@@ -1,8 +1,8 @@
 ######################### SUBNET USED FOR LOAD BALANCER ############################################
 resource "google_compute_subnetwork" "useastlizzo" {
-  name                     = "useastlizzo"
+  name                     = "${local.name}-${var.gcp_region1}-subnet"
   ip_cidr_range            = "10.255.15.0/24"
-  region                   = "us-east1"
+  region                   = var.gcp_region1
   network                  = google_compute_network.mainvpc.id
   purpose                  = "PRIVATE"
   private_ip_google_access = true
